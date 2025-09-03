@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Supabase Chat</title>
+  <title>JSONBin Chat</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     body { margin:0; font-family:sans-serif; display:flex; flex-direction:column; height:100vh; background:#0b1020; color:#f1f1f1; }
@@ -34,13 +34,11 @@
 
   <div id="status">Connecting…</div>
 
-  <script type="module">
-    import { createClient } from "https://esm.sh/@supabase/supabase-js";
+  <script>
+    const BIN_ID = "68b86b85ae596e708fe1653e";   // 👈 Replace
+    const API_KEY = "$2a$10$WC2uU99nX9leNLYgYO/bGeBvgtwaBTU7WRyGV0zKsBND2QhP58WYu"; // 👈 Replace
 
-    // 🔑 Replace these with your Supabase credentials
-    const supabaseUrl = "https://flxuoipwjgxajtlwbfyu.supabase.co";
-    const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZseHVvaXB3amd4YWp0bHdiZnl1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY5MTA1MDMsImV4cCI6MjA3MjQ4NjUwM30.Demh531IOLSKaDLgHdMkVDGp4aUhbuHKgIKlNE2-Qx8";
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const BASE_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
 
     const nameInput = document.getElementById("name");
     const saveNameBtn = document.getElementById("saveName");
@@ -49,66 +47,78 @@
     const messagesEl = document.getElementById("messages");
     const statusEl = document.getElementById("status");
 
-    function setStatus(msg, ok=false) {
-      statusEl.textContent = msg;
-      statusEl.style.color = ok ? "#9f9" : "#f88";
-    }
-
-    // Restore saved name
     nameInput.value = localStorage.getItem("displayName") || "";
     saveNameBtn.addEventListener("click", () => {
       localStorage.setItem("displayName", nameInput.value.trim());
       setStatus("Name saved", true);
     });
 
-    // Load old messages
-    async function loadMessages() {
-      const { data, error } = await supabase.from("messages").select("*");
-      if (error) {
-        setStatus("Error loading messages: " + error.message);
-        return;
-      }
-      messagesEl.innerHTML = "";
-      data.forEach(m => addMessage(m));
-      setStatus("Connected ✔", true);
-    }
-
-    // Send new message
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const text = input.value.trim();
-      const name = (nameInput.value || "Anon").trim();
-      if (!text) return;
-      const { error } = await supabase.from("messages").insert({ name, text });
-      if (error) {
-        setStatus("Error sending: " + error.message);
-      } else {
-        input.value = "";
-      }
-    });
-
-    // Realtime subscription
-    supabase.channel("chat")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, (payload) => {
-        addMessage(payload.new);
-      })
-      .subscribe();
-
-    function addMessage(m) {
-      const el = document.createElement("div");
-      el.className = "msg";
-      el.innerHTML = `
-        <div class="from">${escapeHtml(m.name || "Anon")}</div>
-        <div class="text">${escapeHtml(m.text || "")}</div>
-      `;
-      messagesEl.appendChild(el);
-      messagesEl.scrollTop = messagesEl.scrollHeight;
+    function setStatus(msg, ok=false) {
+      statusEl.textContent = msg;
+      statusEl.style.color = ok ? "#9f9" : "#f88";
     }
 
     function escapeHtml(s) {
       return s.replace(/[&<>\"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',\"'\":'&#39;'}[c]));
     }
 
+    function renderMessages(messages) {
+      messagesEl.innerHTML = "";
+      messages.forEach(m => {
+        const el = document.createElement("div");
+        el.className = "msg";
+        el.innerHTML = `<div class="from">${escapeHtml(m.name)}</div><div class="text">${escapeHtml(m.text)}</div>`;
+        messagesEl.appendChild(el);
+      });
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    async function loadMessages() {
+      try {
+        const res = await fetch(BASE_URL + "/latest", {
+          headers: { "X-Master-Key": API_KEY }
+        });
+        const json = await res.json();
+        renderMessages(json.record.messages || []);
+        setStatus("Connected ✔", true);
+      } catch (e) {
+        setStatus("Error loading messages");
+      }
+    }
+
+    async function sendMessage(text) {
+      try {
+        const res = await fetch(BASE_URL + "/latest", {
+          headers: { "X-Master-Key": API_KEY }
+        });
+        const json = await res.json();
+        const messages = json.record.messages || [];
+        const name = (nameInput.value || "Anon").trim();
+        messages.push({ name, text });
+        await fetch(BASE_URL, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Master-Key": API_KEY
+          },
+          body: JSON.stringify({ messages })
+        });
+        loadMessages();
+      } catch (e) {
+        setStatus("Error sending message");
+      }
+    }
+
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const text = input.value.trim();
+      if (!text) return;
+      input.value = "";
+      sendMessage(text);
+    });
+
+    // Refresh every 2s
+    setInterval(loadMessages, 2000);
     loadMessages();
   </script>
 </body>
