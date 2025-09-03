@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Supabase Live Chat</title>
+  <title>Supabase Chat</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     body { margin:0; font-family:sans-serif; display:flex; flex-direction:column; height:100vh; background:#0b1020; color:#f1f1f1; }
@@ -16,7 +16,7 @@
     form { display:flex; gap:.5rem; padding:.75rem; border-top:1px solid #333; background:#121830; }
     form input { flex:1; padding:.5rem; border-radius:6px; border:1px solid #444; background:#0f152a; color:#fff; }
     form button { padding:.5rem 1rem; border-radius:6px; border:none; background:#1a7f46; color:white; cursor:pointer; }
-    #status { padding:.5rem 1rem; font-size:.9rem; background:#222; border-top:1px solid #444; color:#f88; }
+    #status { padding:.5rem 1rem; font-size:.9rem; background:#222; border-top:1px solid #444; }
   </style>
 </head>
 <body>
@@ -35,12 +35,11 @@
   <div id="status">Connecting…</div>
 
   <script type="module">
-    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+    import { createClient } from "https://esm.sh/@supabase/supabase-js";
 
-    // 🔑 Replace with your Supabase credentials
+    // 🔑 Replace these with your Supabase credentials
     const supabaseUrl = "https://flxuoipwjgxajtlwbfyu.supabase.co";
     const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZseHVvaXB3amd4YWp0bHdiZnl1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY5MTA1MDMsImV4cCI6MjA3MjQ4NjUwM30.Demh531IOLSKaDLgHdMkVDGp4aUhbuHKgIKlNE2-Qx8";
-
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const nameInput = document.getElementById("name");
@@ -64,8 +63,7 @@
 
     // Load old messages
     async function loadMessages() {
-      setStatus("Loading messages…");
-      const { data, error } = await supabase.from("messages").select("*").order("ts", { ascending: true });
+      const { data, error } = await supabase.from("messages").select("*");
       if (error) {
         setStatus("Error loading messages: " + error.message);
         return;
@@ -90,15 +88,11 @@
     });
 
     // Realtime subscription
-    supabase.channel("public:messages")
+    supabase.channel("chat")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, (payload) => {
         addMessage(payload.new);
       })
-      .subscribe((status) => {
-        if (status === "SUBSCRIBED") {
-          setStatus("Connected ✔", true);
-        }
-      });
+      .subscribe();
 
     function addMessage(m) {
       const el = document.createElement("div");
