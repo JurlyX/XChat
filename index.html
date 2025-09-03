@@ -11,6 +11,7 @@
     #name { width: 30%; padding: 5px; }
     #message { width: 60%; padding: 5px; }
     button { padding: 6px 12px; }
+    #error { color: red; margin-top: 10px; font-size: 0.9em; }
   </style>
 </head>
 <body>
@@ -23,25 +24,32 @@
       <button type="submit">Send</button>
     </form>
     <p id="status">Connecting...</p>
+    <p id="error"></p>
   </div>
 
   <script>
     // 🔑 Replace with your JSONBin info
-    const BIN_ID = "68b86b85ae596e708fe1653e";  // e.g. 65e123abc456789def
-    const API_KEY = "$2a$10$w7kHZII5PZ.x1MhtZTBQm.WFZP1ZkfvsbDscb/WNBo9.0kmDtxgH."; // your Master Key
-    const API_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
+    const BIN_ID = "68b86b85ae596e708fe1653e";   // e.g. 65e123abc456789def
+    const API_KEY = "$2a$10$w7kHZII5PZ.x1MhtZTBQm.WFZP1ZkfvsbDscb/WNBo9.0kmDtxgH."; // starts with $2b$...
 
+    const API_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
     const messagesDiv = document.getElementById("messages");
     const status = document.getElementById("status");
+    const errorBox = document.getElementById("error");
     const form = document.getElementById("chat-form");
     const nameInput = document.getElementById("name");
     const messageInput = document.getElementById("message");
 
     async function loadMessages() {
+      errorBox.textContent = "";
       try {
         const res = await fetch(API_URL + "/latest", {
           headers: { "X-Master-Key": API_KEY }
         });
+        if (!res.ok) {
+          const txt = await res.text();
+          throw new Error(res.status + " " + res.statusText + " → " + txt);
+        }
         const data = await res.json();
         const messages = data.record || [];
         messagesDiv.innerHTML = "";
@@ -54,21 +62,26 @@
         status.textContent = "Connected ✅";
       } catch (err) {
         status.textContent = "Error connecting ❌";
-        console.error(err);
+        errorBox.textContent = err.message;
       }
     }
 
     async function sendMessage(name, text) {
+      errorBox.textContent = "";
       try {
         const res = await fetch(API_URL + "/latest", {
           headers: { "X-Master-Key": API_KEY }
         });
+        if (!res.ok) {
+          const txt = await res.text();
+          throw new Error(res.status + " " + res.statusText + " → " + txt);
+        }
         const data = await res.json();
         const messages = data.record || [];
 
         messages.push({ name, text });
 
-        await fetch(API_URL, {
+        const putRes = await fetch(API_URL, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
@@ -76,14 +89,17 @@
           },
           body: JSON.stringify(messages)
         });
+        if (!putRes.ok) {
+          const txt = await putRes.text();
+          throw new Error(putRes.status + " " + putRes.statusText + " → " + txt);
+        }
 
         loadMessages();
       } catch (err) {
-        console.error("Send error", err);
+        errorBox.textContent = err.message;
       }
     }
 
-    // 🚫 Stop form reload
     form.addEventListener("submit", e => {
       e.preventDefault();
       const name = nameInput.value.trim();
@@ -93,7 +109,6 @@
       messageInput.value = "";
     });
 
-    // Refresh messages every 2s
     loadMessages();
     setInterval(loadMessages, 2000);
   </script>
