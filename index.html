@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Supabase Live Chat</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { margin:0; font-family:sans-serif; display:flex; flex-direction:column; height:100vh; background:#0b1020; color:#f1f1f1; }
+    header { display:flex; gap:.5rem; padding:.75rem 1rem; background:#121830; border-bottom:1px solid #333; }
+    header input { flex:1; padding:.5rem; border-radius:6px; border:1px solid #444; background:#0f152a; color:#fff; }
+    header button { padding:.5rem .75rem; border-radius:6px; border:none; background:#1a7f46; color:white; cursor:pointer; }
+    #messages { flex:1; overflow-y:auto; padding:1rem; display:flex; flex-direction:column; gap:.5rem; }
+    .msg { padding:.5rem .75rem; border-radius:8px; background:#1a1f3a; }
+    .from { font-weight:bold; color:#9bd0ff; }
+    .text { margin-top:.25rem; white-space:pre-wrap; word-break:break-word; }
+    form { display:flex; gap:.5rem; padding:.75rem; border-top:1px solid #333; background:#121830; }
+    form input { flex:1; padding:.5rem; border-radius:6px; border:1px solid #444; background:#0f152a; color:#fff; }
+    form button { padding:.5rem 1rem; border-radius:6px; border:none; background:#1a7f46; color:white; cursor:pointer; }
+  </style>
+</head>
+<body>
+  <header>
+    <input id="name" type="text" placeholder="Your name" maxlength="24">
+    <button id="saveName">Save</button>
+  </header>
+
+  <main id="messages"></main>
+
+  <form id="chatForm">
+    <input id="input" type="text" placeholder="Type a message..." maxlength="500">
+    <button type="submit">Send</button>
+  </form>
+
+  <script type="module">
+    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+
+    // 🔑 Replace with your own Supabase URL and anon key:
+    const supabaseUrl = "https://YOUR_PROJECT.supabase.co";
+    const supabaseKey = "YOUR_PUBLIC_ANON_KEY";
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    const nameInput = document.getElementById("name");
+    const saveNameBtn = document.getElementById("saveName");
+    const form = document.getElementById("chatForm");
+    const input = document.getElementById("input");
+    const messagesEl = document.getElementById("messages");
+
+    // Restore saved name
+    nameInput.value = localStorage.getItem("displayName") || "";
+    saveNameBtn.addEventListener("click", () => {
+      localStorage.setItem("displayName", nameInput.value.trim());
+    });
+
+    // Load old messages
+    async function loadMessages() {
+      const { data, error } = await supabase.from("messages").select("*").order("ts", { ascending: true });
+      if (data) {
+        data.forEach(m => addMessage(m));
+      }
+    }
+
+    // Send new message
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const text = input.value.trim();
+      const name = (nameInput.value || "Anon").trim();
+      if (!text) return;
+      await supabase.from("messages").insert({ name, text });
+      input.value = "";
+    });
+
+    // Realtime subscription
+    supabase.channel("public:messages")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, (payload) => {
+        addMessage(payload.new);
+      })
+      .subscribe();
+
+    function addMessage(m) {
+      const el = document.createElement("div");
+      el.className = "msg";
+      el.innerHTML = `
+        <div class="from">${escapeHtml(m.name || "Anon")}</div>
+        <div class="text">${escapeHtml(m.text || "")}</div>
+      `;
+      messagesEl.appendChild(el);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    function escapeHtml(s) {
+      return s.replace(/[&<>\"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',\"'\":'&#39;'}[c]));
+    }
+
+    loadMessages();
+  </script>
+</body>
+</html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Supabase Live Chat</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { margin:0; font-family:sans-serif; display:flex; flex-direction:column; height:100vh; background:#0b1020; color:#f1f1f1; }
+    header { display:flex; gap:.5rem; padding:.75rem 1rem; background:#121830; border-bottom:1px solid #333; }
+    header input { flex:1; padding:.5rem; border-radius:6px; border:1px solid #444; background:#0f152a; color:#fff; }
+    header button { padding:.5rem .75rem; border-radius:6px; border:none; background:#1a7f46; color:white; cursor:pointer; }
+    #messages { flex:1; overflow-y:auto; padding:1rem; display:flex; flex-direction:column; gap:.5rem; }
+    .msg { padding:.5rem .75rem; border-radius:8px; background:#1a1f3a; }
+    .from { font-weight:bold; color:#9bd0ff; }
+    .text { margin-top:.25rem; white-space:pre-wrap; word-break:break-word; }
+    form { display:flex; gap:.5rem; padding:.75rem; border-top:1px solid #333; background:#121830; }
+    form input { flex:1; padding:.5rem; border-radius:6px; border:1px solid #444; background:#0f152a; color:#fff; }
+    form button { padding:.5rem 1rem; border-radius:6px; border:none; background:#1a7f46; color:white; cursor:pointer; }
+  </style>
+</head>
+<body>
+  <header>
+    <input id="name" type="text" placeholder="Your name" maxlength="24">
+    <button id="saveName">Save</button>
+  </header>
+
+  <main id="messages"></main>
+
+  <form id="chatForm">
+    <input id="input" type="text" placeholder="Type a message..." maxlength="500">
+    <button type="submit">Send</button>
+  </form>
+
+  <script type="module">
+    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+
+    // 🔑 Replace with your own Supabase URL and anon key:
+    const supabaseUrl = "https://flxuoipwjgxajtlwbfyu.supabase.co";
+    const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZseHVvaXB3amd4YWp0bHdiZnl1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY5MTA1MDMsImV4cCI6MjA3MjQ4NjUwM30.Demh531IOLSKaDLgHdMkVDGp4aUhbuHKgIKlNE2-Qx8";
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    const nameInput = document.getElementById("name");
+    const saveNameBtn = document.getElementById("saveName");
+    const form = document.getElementById("chatForm");
+    const input = document.getElementById("input");
+    const messagesEl = document.getElementById("messages");
+
+    // Restore saved name
+    nameInput.value = localStorage.getItem("displayName") || "";
+    saveNameBtn.addEventListener("click", () => {
+      localStorage.setItem("displayName", nameInput.value.trim());
+    });
+
+    // Load old messages
+    async function loadMessages() {
+      const { data, error } = await supabase.from("messages").select("*").order("ts", { ascending: true });
+      if (data) {
+        data.forEach(m => addMessage(m));
+      }
+    }
+
+    // Send new message
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const text = input.value.trim();
+      const name = (nameInput.value || "Anon").trim();
+      if (!text) return;
+      await supabase.from("messages").insert({ name, text });
+      input.value = "";
+    });
+
+    // Realtime subscription
+    supabase.channel("public:messages")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, (payload) => {
+        addMessage(payload.new);
+      })
+      .subscribe();
+
+    function addMessage(m) {
+      const el = document.createElement("div");
+      el.className = "msg";
+      el.innerHTML = `
+        <div class="from">${escapeHtml(m.name || "Anon")}</div>
+        <div class="text">${escapeHtml(m.text || "")}</div>
+      `;
+      messagesEl.appendChild(el);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    function escapeHtml(s) {
+      return s.replace(/[&<>\"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',\"'\":'&#39;'}[c]));
+    }
+
+    loadMessages();
+  </script>
+</body>
+</html>
