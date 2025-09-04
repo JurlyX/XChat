@@ -8,7 +8,7 @@
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       margin: 0;
-      background: #e5ddd5;
+      background: #d2d5db;
     }
     #app {
       max-width: 600px;
@@ -16,14 +16,28 @@
       height: 100vh;
       display: flex;
       flex-direction: column;
-      background: #fff;
+      background: #fdfdfd;
+      border-left: 1px solid #aaa;
+      border-right: 1px solid #aaa;
     }
     header {
       padding: 12px;
       text-align: center;
-      font-weight: bold;
-      background: #ededed;
+      font-weight: 600;
+      background: #f7f7f7;
       border-bottom: 1px solid #ccc;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    header button {
+      font-size: 13px;
+      padding: 4px 8px;
+      border: none;
+      border-radius: 6px;
+      background: #007aff;
+      color: white;
+      cursor: pointer;
     }
     #messages {
       flex: 1;
@@ -31,33 +45,39 @@
       padding: 12px;
       display: flex;
       flex-direction: column;
+      background: #e5ddd5;
     }
-    .group { margin-bottom: 10px; }
+    .group { margin-bottom: 10px; display: flex; flex-direction: column; }
     .name {
-      font-size: 12px;
-      color: #666;
-      margin: 4px 8px;
+      font-size: 11px;
+      color: #555;
+      margin: 0 8px 4px;
     }
     .bubble {
       display: inline-block;
       max-width: 75%;
       margin: 2px 0;
       padding: 8px 12px;
-      border-radius: 20px;
+      border-radius: 18px;
       line-height: 1.3;
       word-wrap: break-word;
+      font-size: 15px;
+    }
+    .me {
+      align-items: flex-end;
     }
     .me .bubble {
       background: #0b93f6;
       color: white;
       border-bottom-right-radius: 4px;
-      align-self: flex-end;
+    }
+    .other {
+      align-items: flex-start;
     }
     .other .bubble {
       background: #e5e5ea;
       color: black;
       border-bottom-left-radius: 4px;
-      align-self: flex-start;
     }
     .media img, .media video {
       max-width: 100%;
@@ -85,7 +105,7 @@
       outline: none;
       font-size: 14px;
     }
-    button {
+    button.send {
       margin-left: 8px;
       padding: 10px 16px;
       border: none;
@@ -102,7 +122,10 @@
 </head>
 <body>
   <div id="app">
-    <header>Friends Chat</header>
+    <header>
+      <span>Friends Chat</span>
+      <button id="changeName">Change Name</button>
+    </header>
 
     <div id="status">Connecting…</div>
     <div id="error"></div>
@@ -110,8 +133,8 @@
     <div id="messages"></div>
 
     <form id="chatForm" autocomplete="off">
-      <input id="input" type="text" placeholder="Type a message or paste a link…" maxlength="500" />
-      <button id="sendBtn" type="submit">Send</button>
+      <input id="input" type="text" placeholder="iMessage…" maxlength="500" />
+      <button class="send" id="sendBtn" type="submit">Send</button>
     </form>
   </div>
 
@@ -128,12 +151,17 @@
     const formEl   = document.getElementById("chatForm");
     const inputEl  = document.getElementById("input");
     const sendBtn  = document.getElementById("sendBtn");
+    const changeNameBtn = document.getElementById("changeName");
 
     let displayName = localStorage.getItem("displayName");
     if (!displayName) {
       displayName = prompt("Enter your name:") || "Me";
       localStorage.setItem("displayName", displayName);
     }
+    changeNameBtn.addEventListener("click", () => {
+      displayName = prompt("Enter your name:") || displayName;
+      localStorage.setItem("displayName", displayName);
+    });
 
     function setStatus(text, ok) {
       statusEl.textContent = text;
@@ -173,7 +201,6 @@
         const bubble = document.createElement("div");
         bubble.className = "bubble";
         
-        // Detect links
         const text = m.text || "";
         if (/\.(jpg|jpeg|png|gif)$/i.test(text)) {
           bubble.innerHTML = `<div class="media"><img src="${escapeHtml(text)}" alt="image" /></div>`;
